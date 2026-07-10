@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미래를 예측하는 수학: 행렬과 마르코프 모형</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            scroll-behavior: smooth;
+        }
+        
+        .matrix-bracket {
+            position: relative;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .matrix-bracket::before, .matrix-bracket::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            border: 2px solid #475569;
+        }
+        .matrix-bracket::before { left: 0; border-right: none; }
+        .matrix-bracket::after { right: 0; border-left: none; }
+
+        .matrix-grid { display: grid; gap: 8px; padding: 4px; }
+        
+        .matrix-cell {
+            width: 50px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .matrix-input {
+            width: 50px; height: 40px;
+            text-align: center; border: 2px solid #cbd5e1;
+            border-radius: 6px; font-weight: 600;
+            outline: none; transition: all 0.2s ease;
+        }
+
+        .matrix-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .matrix-input.correct {
+            border-color: #22c55e; background-color: #f0fdf4; color: #166534;
+        }
+        .matrix-input.incorrect {
+            border-color: #ef4444; background-color: #fef2f2; color: #991b1b;
+        }
+
+        .highlight-row { background-color: rgba(59, 130, 246, 0.2); }
+        .highlight-col { background-color: rgba(234, 179, 8, 0.2); }
+
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-primary {
+            background-color: #3b82f6; color: white; font-weight: 600;
+            padding: 8px 24px; border-radius: 8px; transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+        }
+        .btn-primary:hover { background-color: #2563eb; transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(1px); }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex justify-center">
+
+    <div class="max-w-4xl w-full space-y-8 pb-32">
+        <header class="bg-white rounded-2xl shadow-sm p-6 md:p-8 text-center border-t-4 border-blue-500">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">🔮 미래를 예측하는 수학</h1>
+            <p class="text-gray-500">행렬의 곱셈부터 마르코프 예측 알고리즘까지</p>
+        </header>
+
+        <section id="step-1" class="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-6">
+                <h2 class="text-xl font-bold text-blue-800 mb-3">🚀 워밍업: 2 × 2 행렬의 곱셈 (음수 주의!)</h2>
+                <p class="text-sm text-gray-700 mb-6">
+                    음수가 포함된 행렬 곱셈입니다. 계산 후 <b>[정답 확인]</b> 버튼을 누르면 채점이 진행됩니다.<br>
+                    틀린 부분이 있다면 해당 성분을 구하는 데 필요한 행과 열이 하이라이트됩니다!
+                </p>
+                
+                <div class="flex flex-wrap items-center justify-center gap-4 text-lg mb-6">
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-2" id="mat-a-2x2">
+                            <div class="matrix-cell" data-row="0">2</div><div class="matrix-cell" data-row="0">-1</div>
+                            <div class="matrix-cell" data-row="1">0</div><div class="matrix-cell" data-row="1">3</div>
+                        </div>
+                    </div>
+                    <span>×</span>
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-2" id="mat-b-2x2">
+                            <div class="matrix-cell" data-col="0">4</div><div class="matrix-cell" data-col="1">1</div>
+                            <div class="matrix-cell" data-col="0">-2</div><div class="matrix-cell" data-col="1">5</div>
+                        </div>
+                    </div>
+                    <span>=</span>
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-2">
+                            <input type="number" class="matrix-input q-2x2" data-row="0" data-col="0">
+                            <input type="number" class="matrix-input q-2x2" data-row="0" data-col="1">
+                            <input type="number" class="matrix-input q-2x2" data-row="1" data-col="0">
+                            <input type="number" class="matrix-input q-2x2" data-row="1" data-col="1">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button id="btn-check-2x2" class="btn-primary">정답 확인</button>
+                    <p id="fb-2x2" class="mt-4 text-sm font-semibold min-h-[2rem] text-gray-700"></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="step-2" class="hidden fade-in bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-6">
+                <h2 class="text-xl font-bold text-indigo-800 mb-3">🔥 실전: 3 × 3 행렬의 곱셈 도전 1</h2>
+                <p class="text-sm text-gray-700 mb-6">
+                    차원이 커져도 원리는 똑같습니다! 0이 많아 계산이 생각보다 쉬울 거예요.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-2 md:gap-4 text-lg mb-6">
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-3" id="mat-a-3x3-1">
+                            <div class="matrix-cell" data-row="0">1</div><div class="matrix-cell" data-row="0">0</div><div class="matrix-cell" data-row="0">-2</div>
+                            <div class="matrix-cell" data-row="1">0</div><div class="matrix-cell" data-row="1">3</div><div class="matrix-cell" data-row="1">0</div>
+                            <div class="matrix-cell" data-row="2">-1</div><div class="matrix-cell" data-row="2">1</div><div class="matrix-cell" data-row="2">0</div>
+                        </div>
+                    </div>
+                    <span>×</span>
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-3" id="mat-b-3x3-1">
+                            <div class="matrix-cell" data-col="0">2</div><div class="matrix-cell" data-col="1">0</div><div class="matrix-cell" data-col="2">0</div>
+                            <div class="matrix-cell" data-col="0">1</div><div class="matrix-cell" data-col="1">-1</div><div class="matrix-cell" data-col="2">0</div>
+                            <div class="matrix-cell" data-col="0">0</div><div class="matrix-cell" data-col="1">0</div><div class="matrix-cell" data-col="2">3</div>
+                        </div>
+                    </div>
+                    <span>=</span>
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-3">
+                            <input type="number" class="matrix-input q-3x3-1" data-row="0" data-col="0"><input type="number" class="matrix-input q-3x3-1" data-row="0" data-col="1"><input type="number" class="matrix-input q-3x3-1" data-row="0" data-col="2">
+                            <input type="number" class="matrix-input q-3x3-1" data-row="1" data-col="0"><input type="number" class="matrix-input q-3x3-1" data-row="1" data-col="1"><input type="number" class="matrix-input q-3x3-1" data-row="1" data-col="2">
+                            <input type="number" class="matrix-input q-3x3-1" data-row="2" data-col="0"><input type="number" class="matrix-input q-3x3-1" data-row="2" data-col="1"><input type="number" class="matrix-input q-3x3-1" data-row="2" data-col="2">
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button id="btn-check-3x3-1" class="btn-primary" style="background-color: #4f46e5;">정답 확인</button>
+                    <p id="fb-3x3-1" class="mt-4 text-sm font-semibold min-h-[2rem] text-gray-700"></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="step-3" class="hidden fade-in bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <div class="bg-purple-50 border border-purple-100 rounded-xl p-6">
+                <h2 class="text-xl font-bold text-purple-800 mb-3">🌟 심화: 3 × 3 행렬의 곱셈 도전 2</h2>
+                <p class="text-sm text-gray-700 mb-6">음수가 곳곳에 숨어있습니다. 부호에 주의해서 마지막 곱셈을 완성해 보세요!</p>
+                <div class="flex flex-wrap items-center justify-center gap-2 md:gap-4 text-lg mb-6">
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-3" id="mat-a-3x3-2">
+                            <div class="matrix-cell" data-row="0">-1</div><div class="matrix-cell" data-row="0">2</div><div class="matrix-cell" data-row="0">0</div>
+                            <div class="matrix-cell" data-row="1">0</div><div class="matrix-cell" data-row="1">1</div><div class="matrix-cell" data-row="1">-1</div>
+                            <div class="matrix-cell" data-row="2">2</div><div class="matrix-cell" data-row="2">0</div><div class="matrix-cell" data-row="2">1</div>
+                        </div>
+                    </div>
+                    <span>×</span>
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-3" id="mat-b-3x3-2">
+                            <div class="matrix-cell" data-col="0">1</div><div class="matrix-cell" data-col="1">0</div><div class="matrix-cell" data-col="2">1</div>
+                            <div class="matrix-cell" data-col="0">0</div><div class="matrix-cell" data-col="1">2</div><div class="matrix-cell" data-col="2">0</div>
+                            <div class="matrix-cell" data-col="0">-1</div><div class="matrix-cell" data-col="1">0</div><div class="matrix-cell" data-col="2">0</div>
+                        </div>
+                    </div>
+                    <span>=</span>
+                    <div class="matrix-bracket">
+                        <div class="matrix-grid grid-cols-3">
+                            <input type="number" class="matrix-input q-3x3-2" data-row="0" data-col="0"><input type="number" class="matrix-input q-3x3-2" data-row="0" data-col="1"><input type="number" class="matrix-input q-3x3-2" data-row="0" data-col="2">
+                            <input type="number" class="matrix-input q-3x3-2" data-row="1" data-col="0"><input type="number" class="matrix-input q-3x3-2" data-row="1" data-col="1"><input type="number" class="matrix-input q-3x3-2" data-row="1" data-col="2">
+                            <input type="number" class="matrix-input q-3x3-2" data-row="2" data-col="0"><input type="number" class="matrix-input q-3x3-2" data-row="2" data-col="1"><input type="number" class="matrix-input q-3x3-2" data-row="2" data-col="2">
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button id="btn-check-3x3-2" class="btn-primary" style="background-color: #7e22ce;">정답 확인</button>
+                    <p id="fb-3x3-2" class="mt-4 text-sm font-semibold min-h-[2rem] text-gray-700"></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="step-4" class="hidden fade-in bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-yellow-400 pl-3">📱 아이폰 vs 갤럭시, 당신의 선택은?</h2>
+            
+            <div class="flex flex-col md:flex-row items-center gap-6 mb-8 bg-gray-50 p-6 rounded-xl">
+                <div class="flex-shrink-0 text-7xl flex gap-4">
+                    <span class="animate-bounce">📱</span>
+                    <span class="animate-pulse">🌌</span>
+                </div>
+                <div class="text-gray-700 space-y-2">
+                    <p>우리나라 스마트폰 시장은 크게 <b>아이폰</b>과 <b>갤럭시</b>로 나뉩니다.</p>
+                    <p>수많은 사람들이 매일 스마트폰을 바꾸고 점유율은 계속 변동합니다.</p>
+                    <p class="font-bold text-gray-900 mt-4 bg-yellow-100 inline-block p-1">
+                        질문: 개인이 다음 스마트폰을 구매할 때, 기종 선택에 <span class="text-blue-600">가장 큰 영향</span>을 미치는 요인은 무엇일까요?
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="mcq-options">
+                <button class="bg-white border-2 border-gray-200 text-gray-700 p-4 rounded-xl text-left hover:border-blue-400 transition" onclick="checkMCQ(1, this)">
+                    1. 10년 전에 처음 샀던 스마트폰 기종
+                </button>
+                <button class="bg-white border-2 border-gray-200 text-gray-700 p-4 rounded-xl text-left hover:border-blue-400 transition" onclick="checkMCQ(2, this)">
+                    2. 초등학교 때 친했던 짝꿍의 스마트폰 기종
+                </button>
+                <button class="bg-white border-2 border-gray-200 text-gray-700 p-4 rounded-xl text-left hover:border-blue-400 transition" onclick="checkMCQ(3, this)">
+                    3. 현재 내가 사용하고 있는 스마트폰 기종
+                </button>
+                <button class="bg-white border-2 border-gray-200 text-gray-700 p-4 rounded-xl text-left hover:border-blue-400 transition" onclick="checkMCQ(4, this)">
+                    4. 어제 우연히 본 지하철 광고
+                </button>
+            </div>
+            <p id="mcq-feedback" class="mt-4 text-center font-bold h-6 text-red-500"></p>
+        </section>
+
+        <section id="step-5" class="hidden fade-in bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-green-500 pl-3">🔄 변화의 확률 설정하기</h2>
+            <p class="text-gray-700 mb-6">
+                정답입니다! <b>"과거는 중요하지 않다. 오직 '현재 상태'만이 다음 선택을 결정한다."</b><br>
+                이러한 성질을 가지는 과정을 우리는 모델링할 것입니다. 여러분이 직접 유저들의 선택 확률을 설정해보세요!
+            </p>
+
+            <div class="bg-green-50 border border-green-200 p-6 rounded-xl space-y-6">
+                <p class="text-sm font-semibold text-green-800 mb-2">💡 확률은 0 이상 1 이하의 소수로 입력해주세요 (예: 0.8, 0.2)</p>
+                
+                <div class="flex flex-col md:flex-row justify-between gap-6">
+                    <div class="flex-1 bg-white p-5 rounded-xl shadow-sm border-t-4 border-blue-400">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">📱 현재 아이폰 유저</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-sm">다음에도 아이폰 유지:</span>
+                                <input type="number" id="prob-ii" step="0.1" class="w-20 p-1 border border-gray-300 rounded text-center focus:border-blue-500 outline-none" placeholder="0.8">
+                            </div>
+                            <div class="flex justify-between items-center p-2">
+                                <span class="text-sm text-gray-500">다음엔 갤럭시로 이동:</span>
+                                <span id="prob-ig" class="font-bold text-gray-400">?</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-white p-5 rounded-xl shadow-sm border-t-4 border-gray-800">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">🌌 현재 갤럭시 유저</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-sm">다음에도 갤럭시 유지:</span>
+                                <input type="number" id="prob-gg" step="0.1" class="w-20 p-1 border border-gray-300 rounded text-center focus:border-gray-800 outline-none" placeholder="0.7">
+                            </div>
+                            <div class="flex justify-between items-center p-2">
+                                <span class="text-sm text-gray-500">다음엔 아이폰으로 이동:</span>
+                                <span id="prob-gi" class="font-bold text-gray-400">?</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-6">
+                    <button id="btn-confirm-prob" class="btn-primary" style="background-color: #16a34a;">확률 확정하기</button>
+                    <p id="prob-error" class="text-red-500 font-bold mt-3 hidden">확률은 0과 1 사이의 올바른 숫자로 모두 입력해주세요!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="step-6" class="hidden fade-in bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-rose-500 pl-3">⏳ 1년 뒤의 미래 예측하기</h2>
+            
+            <div class="flex flex-col md:flex-row items-center justify-center gap-8 mb-8 bg-gray-50 py-6 rounded-xl border border-gray-200">
+                <div class="text-center">
+                    <p class="text-sm text-gray-500 mb-1">현재 (0년차)</p>
+                    <div class="text-2xl font-bold text-blue-600">📱 아이폰: 100명</div>
+                </div>
+                <div class="text-2xl font-black text-gray-300">VS</div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-500 mb-1">현재 (0년차)</p>
+                    <div class="text-2xl font-bold text-gray-800">🌌 갤럭시: 100명</div>
+                </div>
+            </div>
+
+            <p class="text-gray-700 mb-6 text-center">
+                여러분이 위에서 설정한 확률에 따르면, <b>1년 뒤</b> 각 기종의 유저 수는 몇 명이 될까요?<br>
+                <span class="text-sm text-rose-500">(계산 결과가 소수점일 경우, 반올림하지 말고 그대로 적어주세요.)</span>
+            </p>
+
+            <div class="flex flex-col md:flex-row justify-center items-center gap-6 mb-6">
+                <div class="bg-white border-2 border-blue-200 p-4 rounded-xl text-center shadow-sm w-56">
+                    <div class="text-sm font-bold text-blue-600 mb-2">1년 뒤 아이폰 유저 수</div>
+                    <input type="number" id="ans-next-i" class="w-24 text-center text-xl font-bold border-b-2 border-gray-300 focus:border-blue-500 outline-none p-1"> 명
+                </div>
+                <div class="bg-white border-2 border-gray-300 p-4 rounded-xl text-center shadow-sm w-56">
+                    <div class="text-sm font-bold text-gray-700 mb-2">1년 뒤 갤럭시 유저 수</div>
+                    <input type="number" id="ans-next-g" class="w-24 text-center text-xl font-bold border-b-2 border-gray-300 focus:border-gray-800 outline-none p-1"> 명
+                </div>
+            </div>
+
+            <div class="text-center space-y-4">
+                <button id="btn-check-calc" class="btn-primary" style="background-color: #e11d48;">정답 확인</button>
+                <div id="calc-feedback" class="font-bold text-rose-600 min-h-[1.5rem]"></div>
+                <button id="btn-hint" class="text-sm text-gray-500 underline hidden hover:text-gray-800 transition">도저히 모르겠어요 (힌트 보기)</button>
+            </div>
+        </section>
+
+        <section id="step-7" class="hidden fade-in bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-teal-500 pl-3">✨ 비밀의 해제: 마르코프 행렬</h2>
+            
+            <p class="text-gray-700 mb-4">
+                방금 여러분이 계산한 식을 수식으로 써보면 다음과 같습니다. (현재 유저를 $I_0, G_0$라 합시다.)
+            </p>
+            
+            <div class="bg-gray-50 p-5 rounded-xl font-mono text-center text-lg mb-8 border border-gray-200 leading-loose">
+                1년 뒤 아이폰 = <span class="font-bold text-blue-600">I₀</span> × <span id="eq-ii" class="text-blue-800 font-bold"></span> + <span class="font-bold text-gray-600">G₀</span> × <span id="eq-gi" class="text-gray-800 font-bold"></span><br>
+                1년 뒤 갤럭시 = <span class="font-bold text-blue-600">I₀</span> × <span id="eq-ig" class="text-blue-800 font-bold"></span> + <span class="font-bold text-gray-600">G₀</span> × <span id="eq-gg" class="text-gray-800 font-bold"></span>
+            </div>
+            
+            <p class="text-gray-700 mb-6 font-semibold bg-teal-50 p-3 rounded-lg border border-teal-100">
+                이 복잡한 덧셈 식을 오늘 우리가 연습한 **행렬의 곱셈** 모양으로 조립해보세요!<br>
+                빈칸을 채워 식을 완성하면, 이것이 바로 상태의 변화를 담은 <b>'마르코프 행렬(전이 행렬)'</b>이 됩니다.
+            </p>
+
+            <div class="flex items-center justify-center gap-4 text-xl font-bold mb-6">
+                <div class="flex flex-col text-sm text-gray-500 text-right pr-2 space-y-4">
+                    <span>($I_1$)</span>
+                    <span>($G_1$)</span>
+                </div>
+                <span>=</span>
+                <!-- Transition Matrix -->
+                <div class="matrix-bracket bg-white">
+                    <div class="matrix-grid grid-cols-2">
+                        <input type="number" class="matrix-input q-final" data-row="0" data-col="0" step="0.1" placeholder="?">
+                        <input type="number" class="matrix-input q-final" data-row="0" data-col="1" step="0.1" placeholder="?">
+                        <input type="number" class="matrix-input q-final" data-row="1" data-col="0" step="0.1" placeholder="?">
+                        <input type="number" class="matrix-input q-final" data-row="1" data-col="1" step="0.1" placeholder="?">
+                    </div>
+                </div>
+                <span>×</span>
+                <!-- State Vector -->
+                <div class="matrix-bracket bg-gray-50">
+                    <div class="matrix-grid grid-cols-1">
+                        <div class="matrix-cell text-blue-600">I₀</div>
+                        <div class="matrix-cell text-gray-600">G₀</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <button id="btn-check-final" class="btn-primary" style="background-color: #0d9488;">행렬 완성하기</button>
+                <p id="fb-final" class="mt-4 text-sm font-semibold h-6 text-red-500"></p>
+            </div>
+
+            <div id="final-success" class="hidden text-center mt-8 p-6 bg-teal-50 border-2 border-teal-400 rounded-xl shadow-sm">
+                <h3 class="text-2xl font-bold text-teal-800 mb-3">🎉 완벽합니다!</h3>
+                <p class="text-teal-900 leading-relaxed">
+                    놀랍지 않나요? 이제 만들어진 **마르코프 행렬**을 10번, 100번 거듭제곱($A^n$)하기만 하면,<br>
+                    미래의 점유율이 어떻게 될지 순식간에 예측할 수 있습니다.<br>
+                    <span class="font-bold bg-yellow-200">초기 상태(100명, 100명)를 마음대로 바꿔도 결국 하나의 비율로 수렴한답니다!</span><br>
+                    이것이 바로 선형대수학이 세상을 모델링하는 강력한 힘입니다.
+                </p>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // 1. Matrix Answers Data
+        const ans2x2 = {
+            '00': 10, '01': -3,
+            '10': -6, '11': 15
+        };
+        const ans3x3_1 = {
+            '00': 2, '01': 0, '02': -6,
+            '10': 3, '11': -3, '12': 0,
+            '20': -1, '21': -1, '22': 0
+        };
+        const ans3x3_2 = {
+            '00': -1, '01': 4, '02': -1,
+            '10': 1, '11': 2, '12': 0,
+            '20': 1, '21': 0, '22': 2
+        };
+
+        // Utility: Show next section
+        function showStep(num) {
+            const el = document.getElementById(`step-${num}`);
+            if (el) {
+                el.classList.remove('hidden');
+                setTimeout(() => {
+                    const offset = el.getBoundingClientRect().top + window.scrollY - 20;
+                    window.scrollTo({ top: offset, behavior: 'smooth' });
+                }, 100);
+            }
+        }
+
+        // Validation now ONLY happens when the button is clicked.
+        function setupMatrixCheck(inputClass, ansObj, matASel, matBSel, btnId, fbId, nextStepNum) {
+            const btn = document.getElementById(btnId);
+            const fb = document.getElementById(fbId);
+            const inputs = document.querySelectorAll(`.${inputClass}`);
+            
+            btn.addEventListener('click', () => {
+                let allCorrect = true;
+                let firstWrong = null;
+
+                // 1. Clear previous styles & highlights
+                document.querySelectorAll(`${matASel} .matrix-cell, ${matBSel} .matrix-cell`).forEach(el => {
+                    el.classList.remove('highlight-row', 'highlight-col');
+                });
+                inputs.forEach(inp => inp.classList.remove('correct', 'incorrect'));
+
+                // 2. Validate inputs
+                inputs.forEach(inp => {
+                    const r = inp.dataset.row;
+                    const c = inp.dataset.col;
+                    const key = `${r}${c}`;
+                    const val = inp.value.trim();
+
+                    if (val === '' || parseFloat(val) !== ansObj[key]) {
+                        allCorrect = false;
+                        inp.classList.add('incorrect');
+                        if (!firstWrong) firstWrong = { r, c }; // Save first error coordinate
+                    } else {
+                        inp.classList.add('correct');
+                    }
+                });
+
+                // 3. Feedback and Highlighting
+                if (allCorrect) {
+                    fb.textContent = "정답입니다! 👏 아주 잘하셨어요.";
+                    fb.className = "text-center mt-4 text-sm font-bold text-green-600 h-8";
+                    inputs.forEach(inp => inp.disabled = true);
+                    btn.classList.add('hidden'); // Hide button on success
+                    if(nextStepNum) setTimeout(() => showStep(nextStepNum), 600);
+                } else {
+                    const r = firstWrong.r;
+                    const c = firstWrong.c;
+                    fb.innerHTML = `앗, <span class="text-red-600 font-bold">(${parseInt(r)+1}행, ${parseInt(c)+1}열)</span> 성분이 비어있거나 틀렸습니다!<br>파란색 행과 노란색 열의 곱을 다시 천천히 계산해 보세요.`;
+                    fb.className = "text-center mt-4 text-sm font-semibold text-gray-700 h-8";
+                    
+                    // Highlight the responsible row in Matrix A and col in Matrix B
+                    document.querySelectorAll(`${matASel} .matrix-cell[data-row="${r}"]`).forEach(el => el.classList.add('highlight-row'));
+                    document.querySelectorAll(`${matBSel} .matrix-cell[data-col="${c}"]`).forEach(el => el.classList.add('highlight-col'));
+                }
+            });
+
+            // Make 'Enter' key trigger the check button
+            inputs.forEach(inp => {
+                inp.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btn.click();
+                    }
+                });
+            });
+        }
+
+        // Initialize Step 1, 2, 3
+        setupMatrixCheck('q-2x2', ans2x2, '#mat-a-2x2', '#mat-b-2x2', 'btn-check-2x2', 'fb-2x2', 2);
+        setupMatrixCheck('q-3x3-1', ans3x3_1, '#mat-a-3x3-1', '#mat-b-3x3-1', 'btn-check-3x3-1', 'fb-3x3-1', 3);
+        setupMatrixCheck('q-3x3-2', ans3x3_2, '#mat-a-3x3-2', '#mat-b-3x3-2', 'btn-check-3x3-2', 'fb-3x3-2', 4);
+
+        function checkMCQ(choice, btnEl) {
+            const fb = document.getElementById('mcq-feedback');
+            const btns = document.querySelectorAll('#mcq-options button');
+            
+            // Reset styles
+            btns.forEach(b => {
+                b.classList.remove('border-red-500', 'border-blue-500', 'bg-red-50', 'bg-blue-50');
+            });
+
+            if (choice === 3) {
+                btnEl.classList.add('border-blue-500', 'bg-blue-50', 'font-bold');
+                fb.textContent = "정답입니다! 다음 단계로 넘어갑니다.";
+                fb.className = "mt-4 text-center font-bold h-6 text-blue-600";
+                btns.forEach(b => b.disabled = true);
+                setTimeout(() => showStep(5), 800);
+            } else {
+                btnEl.classList.add('border-red-500', 'bg-red-50');
+                fb.textContent = "다시 생각해보세요! '현재' 내가 쓰고 있는 폰의 영향력이 가장 크지 않을까요?";
+                fb.className = "mt-4 text-center font-bold h-6 text-red-500";
+            }
+        }
+
+        let pII = 0, pIG = 0, pGG = 0, pGI = 0;
+        const inpII = document.getElementById('prob-ii');
+        const inpGG = document.getElementById('prob-gg');
+        const spanIG = document.getElementById('prob-ig');
+        const spanGI = document.getElementById('prob-gi');
+
+        function updateProbs() {
+            let v1 = parseFloat(inpII.value);
+            let v2 = parseFloat(inpGG.value);
+            
+            if (!isNaN(v1) && v1 >= 0 && v1 <= 1) {
+                spanIG.textContent = (1 - v1).toFixed(2);
+                spanIG.classList.replace('text-gray-400', 'text-rose-500');
+            } else {
+                spanIG.textContent = "?";
+                spanIG.classList.replace('text-rose-500', 'text-gray-400');
+            }
+            
+            if (!isNaN(v2) && v2 >= 0 && v2 <= 1) {
+                spanGI.textContent = (1 - v2).toFixed(2);
+                spanGI.classList.replace('text-gray-400', 'text-blue-500');
+            } else {
+                spanGI.textContent = "?";
+                spanGI.classList.replace('text-blue-500', 'text-gray-400');
+            }
+        }
+
+        inpII.addEventListener('input', updateProbs);
+        inpGG.addEventListener('input', updateProbs);
+
+        document.getElementById('btn-confirm-prob').addEventListener('click', () => {
+            let v1 = parseFloat(inpII.value);
+            let v2 = parseFloat(inpGG.value);
+            const err = document.getElementById('prob-error');
+
+            if (isNaN(v1) || isNaN(v2) || v1 < 0 || v1 > 1 || v2 < 0 || v2 > 1) {
+                err.classList.remove('hidden');
+                return;
+            }
+            err.classList.add('hidden');
+            
+            // Save global state
+            pII = v1; pGG = v2;
+            pIG = 1 - pII; pGI = 1 - pGG;
+
+            // Pre-fill texts for Step 7
+            document.getElementById('eq-ii').textContent = pII;
+            document.getElementById('eq-gi').textContent = pGI.toFixed(2);
+            document.getElementById('eq-ig').textContent = pIG.toFixed(2);
+            document.getElementById('eq-gg').textContent = pGG;
+
+            inpII.disabled = true; 
+            inpGG.disabled = true;
+            document.getElementById('btn-confirm-prob').classList.add('hidden');
+            showStep(6);
+        });
+
+        let calcAttempts = 0;
+        document.getElementById('btn-check-calc').addEventListener('click', () => {
+            const ansI = 100 * pII + 100 * pGI;
+            const ansG = 100 * pIG + 100 * pGG;
+            
+            const userI = parseFloat(document.getElementById('ans-next-i').value);
+            const userG = parseFloat(document.getElementById('ans-next-g').value);
+            
+            const fb = document.getElementById('calc-feedback');
+            const hintBtn = document.getElementById('btn-hint');
+
+            // Float precision check
+            if (Math.abs(userI - ansI) < 0.01 && Math.abs(userG - ansG) < 0.01) {
+                fb.textContent = "정답입니다! 가중합의 원리를 완벽히 이해하셨네요.";
+                fb.className = "font-bold text-green-600 min-h-[1.5rem]";
+                document.getElementById('ans-next-i').disabled = true;
+                document.getElementById('ans-next-g').disabled = true;
+                document.getElementById('btn-check-calc').classList.add('hidden');
+                hintBtn.classList.add('hidden');
+                setTimeout(() => showStep(7), 1000);
+            } else {
+                calcAttempts++;
+                fb.className = "font-bold text-rose-600 min-h-[1.5rem]";
+                if (calcAttempts === 1) {
+                    fb.textContent = "결과가 다릅니다. 아이폰 유저 중 유지하는 사람과, 갤럭시 유저 중 넘어온 사람을 더해보세요!";
+                    hintBtn.classList.remove('hidden');
+                } else {
+                    fb.textContent = "여전히 틀렸습니다. 아래 힌트 보기를 클릭해보세요.";
+                }
+            }
+        });
+
+        document.getElementById('btn-hint').addEventListener('click', () => {
+            const fb = document.getElementById('calc-feedback');
+            fb.innerHTML = `<b>결정적 힌트:</b><br>
+                아이폰 = 100 × ${pII} + 100 × ${pGI.toFixed(2)}<br>
+                갤럭시 = 100 × ${pIG.toFixed(2)} + 100 × ${pGG}`;
+        });
+
+        const btnCheckFinal = document.getElementById('btn-check-final');
+        const finalInputs = document.querySelectorAll('.q-final');
+        const finalFb = document.getElementById('fb-final');
+        
+        btnCheckFinal.addEventListener('click', () => {
+            // Target Answer Matrix
+            // [ pII, pGI ]  <- Note: pGI is the top right because it multiplies G0
+            // [ pIG, pGG ]
+            const ansObj = {
+                '00': pII, '01': Number(pGI.toFixed(2)),
+                '10': Number(pIG.toFixed(2)), '11': pGG
+            };
+            
+            let allCorrect = true;
+            finalInputs.forEach(inp => {
+                const key = inp.dataset.row + inp.dataset.col;
+                const val = parseFloat(inp.value);
+                
+                inp.classList.remove('correct', 'incorrect');
+
+                if (isNaN(val) || Math.abs(val - ansObj[key]) > 0.01) {
+                    allCorrect = false;
+                    inp.classList.add('incorrect');
+                } else {
+                    inp.classList.add('correct');
+                }
+            });
+
+            if (allCorrect) {
+                finalInputs.forEach(inp => inp.disabled = true);
+                finalFb.textContent = "";
+                btnCheckFinal.classList.add('hidden');
+                const successDiv = document.getElementById('final-success');
+                successDiv.classList.remove('hidden');
+                successDiv.classList.add('fade-in');
+                setTimeout(() => {
+                    const offset = successDiv.getBoundingClientRect().top + window.scrollY - 50;
+                    window.scrollTo({ top: offset, behavior: 'smooth' });
+                }, 100);
+            } else {
+                finalFb.innerHTML = "틀린 부분이 있습니다. 위의 식과 행렬 곱셈의 규칙(행×열)을 천천히 비교하며 자리를 찾아보세요!";
+            }
+        });
+        
+        // Enter key for final step
+        finalInputs.forEach(inp => {
+            inp.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    btnCheckFinal.click();
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
