@@ -628,7 +628,8 @@
 
         document.getElementById('btn-hint').addEventListener('click', () => {
             finalFb.innerHTML = `<b>결정적 힌트:</b><br>
-                P 행렬: 1열은 [${pII}, ${pGI.toFixed(1)}]ᵀ, 2열은 [${pIG.toFixed(1)}, ${pGG}]ᵀ 입니다.<br>
+                1년 뒤에 아이폰을 사용하는 사람은 원래부터 아이폰을 쓰던 사람, 갤럭시를 쓰다가 바꾼 사람의 2가지 경우가 있죠?
+                이를 식으로 나타내면 다음과 같습니다! 이를 행렬의 곱셈으로 표현하려면 성분을 어떻게 배치해야 할까요?<br>
                 아이폰(X₁) = ${pII}×100 + ${pIG.toFixed(1)}×100<br>
                 갤럭시(X₁) = ${pGI.toFixed(1)}×100 + ${pGG}×100`;
         });
