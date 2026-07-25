@@ -618,18 +618,20 @@
             } else {
                 calcAttempts++;
                 if (calcAttempts === 1) {
-                    finalFb.innerHTML = "틀린 부분이 있습니다. <br>전이 행렬 P의 <b>'각 열(세로줄)의 합이 1'</b>이 되도록 확률을 배치해 보세요!";
+                    finalFb.innerHTML = "틀린 부분이 있습니다. <br>1년 뒤에 아이폰을 사용하는 사람은 원래부터 아이폰을 쓰던 사람, 갤럭시를 쓰다가 바꾼 사람의 2가지 경우가 있죠? <br>이를 더해 1년 뒤 아이폰 사용자를 구한다면 이를 행렬의 곱셈으로 표현하려면 성분을 어떻게 배치해야 할까요?";
                     hintBtn.classList.remove('hidden');
                 } else {
-                    finalFb.textContent = "여전히 틀렸습니다. 아래 힌트 보기를 클릭해보세요.";
+                    finalFb.textContent = "잘 모르겠다면 아래 힌트 보기를 클릭해보세요.";
                 }
             }
         });
 
         document.getElementById('btn-hint').addEventListener('click', () => {
             finalFb.innerHTML = `<b>결정적 힌트:</b><br>
-                아이폰 = ${pII} × 100 + ${pIG.toFixed(1)} × 100<br>
-                갤럭시 = ${pGI.toFixed(1)} × 100 + ${pGG} × 100`;
+                앞선 힌트에서 구하는 식은 다음과 같습니다.<br> 
+                아이폰 = ${pII} × 100 + ${pGI.toFixed(1)} × 100<br>
+                갤럭시 = ${pIG.toFixed(1)} × 100 + ${pGG} × 100<br>
+                그렇다면, 이를 행렬의 곱셈으로 나타내기 위해서는 행렬의 원소를 어떻게 배치해야 할까요?`;
         });
 
         // Enter key for step 6
@@ -667,8 +669,8 @@
             
             // Transition Matrix P (Column Stochastic)
             const P = [
-                [pII, pIG],
-                [pGI, pGG]
+                [pII, pGI],
+                [pIG, pGG]
             ];
 
             const STEPS = 30; // 30 years is enough to see convergence
