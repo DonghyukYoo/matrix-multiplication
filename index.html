@@ -305,11 +305,10 @@
                     <span class="text-sm text-gray-500 mb-2 font-normal">전이 확률 행렬 P</span>
                     <div class="matrix-bracket bg-white">
                         <div class="matrix-grid grid-cols-2">
-                            <!-- Column 1: From iPhone -->
+                            <!-- Row-major DOM order matches the displayed matrix positions. -->
                             <input type="number" class="matrix-input q-final" data-row="0" data-col="0" step="0.1" placeholder="?">
-                            <input type="number" class="matrix-input q-final" data-row="1" data-col="0" step="0.1" placeholder="?">
-                            <!-- Column 2: From Galaxy -->
                             <input type="number" class="matrix-input q-final" data-row="0" data-col="1" step="0.1" placeholder="?">
+                            <input type="number" class="matrix-input q-final" data-row="1" data-col="0" step="0.1" placeholder="?">
                             <input type="number" class="matrix-input q-final" data-row="1" data-col="1" step="0.1" placeholder="?">
                         </div>
                     </div>
@@ -373,7 +372,7 @@
                     <div id="res-t2" class="text-gray-700 font-mono text-sm break-all font-semibold">대기중...</div>
                 </div>
                 <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl shadow-sm ring-2 ring-purple-300 text-center">
-                    <div class="text-sm font-semibold text-purple-800 mb-2">수렴 상태 (X_∞)</div>
+                    <div class="text-sm font-semibold text-purple-800 mb-2">수학적 정상상태 (X_∞)</div>
                     <div id="res-tinf" class="text-gray-900 font-mono font-bold text-sm break-all">대기중...</div>
                 </div>
             </div>
@@ -555,29 +554,24 @@
         const finalFb = document.getElementById('fb-final');
         
         btnCheckFinal.addEventListener('click', () => {
-            // MODIFIED: 열벡터 표기법에 맞춘 전이 확률 행렬 P 생성 로직
-            // P = [ pII, pGI ]  <- 1열(아이폰 유지), 2열(갤럭시에서 넘어옴)
-            //     [ pIG, pGG ]  <- 1열(아이폰에서 넘어감), 2열(갤럭시 유지)
-            const ansObj = {
-                '00': pII, 
-                '01': Number(pIG.toFixed(1)), // 오류 수정됨 (pIG -> pGI)
-                '10': Number(pGI.toFixed(1)), // 오류 수정됨 (pGI -> pIG)
-                '11': pGG
-            };
-            
-            // Target X1 = P * X0, where X0 = [100, 100]^T
-            const ansI = 100 * pII + 100 * pGI;
-            const ansG = 100 * pIG + 100 * pGG;
+            // Column-vector convention: columns are the current state,
+            // rows are the next state. Each column must sum to 1.
+            const P = getTransitionMatrix();
+
+            // Target X1 = P * X0, where X0 = [100, 100]^T.
+            const [ansI, ansG] = multiplyMatrixVector(P, [100, 100]);
 
             let allCorrect = true;
             
             // Check Transition Matrix Inputs
             finalInputs.forEach(inp => {
-                const key = inp.dataset.row + inp.dataset.col;
+                const row = Number(inp.dataset.row);
+                const col = Number(inp.dataset.col);
+                const expected = P[row][col];
                 const val = parseFloat(inp.value);
                 inp.classList.remove('correct', 'incorrect');
 
-                if (isNaN(val) || Math.abs(val - ansObj[key]) > 0.01) {
+                if (isNaN(val) || Math.abs(val - expected) > 0.01) {
                     allCorrect = false;
                     inp.classList.add('incorrect');
                 } else {
@@ -678,17 +672,29 @@
             return '[ ' + vec.map(v => (v * 100).toFixed(1) + '%').join(', ') + ' ]ᵀ';
         }
 
+        function getTransitionMatrix() {
+            // Column-stochastic matrix: P[row][column] = Pr(next state=row | current state=column).
+            return [
+                [pII, pGI],
+                [pIG, pGG]
+            ];
+        }
+
+        function calculateSteadyState(P) {
+            // For a two-state chain, the stationary vector is proportional to
+            // [P[0][1], P[1][0]]. Input constraints make the denominator positive.
+            const denominator = P[0][1] + P[1][0];
+            return [P[0][1] / denominator, P[1][0] / denominator];
+        }
+
         function runSimulation() {
             // Initial Vector: [0.5, 0.5]^T (Probabilities instead of population for chart)
             let currentX = [0.5, 0.5];
             
             // Transition Matrix P (Column Stochastic)
-            const P = [
-                [pII, pGI],
-                [pIG, pGG]
-            ];
+            const P = getTransitionMatrix();
 
-            const STEPS = 30; // 30 years is enough to see convergence
+            const STEPS = 100; // Match the 100-year description above
             let history = [currentX];
 
             for (let i = 1; i <= STEPS; i++) {
@@ -699,7 +705,7 @@
             // Update Text Results
             document.getElementById('res-t1').textContent = formatVector(history[1]);
             document.getElementById('res-t2').textContent = formatVector(history[2]);
-            document.getElementById('res-tinf').textContent = formatVector(history[STEPS]);
+            document.getElementById('res-tinf').textContent = formatVector(calculateSteadyState(P));
 
             // Update Chart
             updateChart(history);
